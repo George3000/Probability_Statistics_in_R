@@ -1,0 +1,334 @@
+---
+title: "Exploring the BRFSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+Note: Addtional packages used, gmodels for more compact code and similarity in output format with SAS, SPSS 
+```{r}
+#install.packages("gmodels")
+```
+
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(gmodels)
+
+```
+
+### Load data
+
+```{r load-data}
+load("brfss2013.RData")
+```
+
+
+* * *
+
+## Part 1: Data
+### A.  BRFSS Background
+
+The Behavioral Risk Factor Surveillance System (BRFSS) it's a health telephone survey conducted continuously through the year across USA by Centers for Disease Control and Prevention (CDC). Its objective is to collect health specific data on preventive health practices and risk behaviors linked to chronic diseases, injuries, and preventable infectious diseases that affect the adult population aged 18 or older across all USA at state and local level. 
+
+BRFSS completes more than 400,000 adult interviews each year, making it the largest continuously conducted health survey system in the world. It is worth mentioning due to its success a number of countries have expressed interest in adopting the survey to their countries.
+
+Starting in 2011 the survey is conducted using two sample methodologies:
+1.	By landline telephone where data is collected from a randomly selected adult in the household.
+2.	By cellular telephone data is collected from an adult that resides in a private residence or college housing 
+
+In 2013, additional question sets were included as optional modules to provide a measure for several childhood health and wellness indicators, including asthma prevalence for people aged 17 years or younger.
+
+### B.  Applications of BRFSS
+
+By gathering behavioral health risk data at the state and local level, BRFSS has become a powerful tool for targeting and building health promotion activities. 
+
+### C.	Drawing Conclusions from the survey: Inference opportunity
+
+The survey uses *random sampling* but no *random assignment* therefore it's an observational study.  
+.	**Generalizability -Yes**
+.	**Causation -No**
+
+The survey is conducted using Random Digit Dialing (RDD) techniques on both landlines and cell phones by *generating* telephone numbers at *random*. Once contacted interviewers asks people questions (*no random assignment*) out of the questionnaire. The survey it's an observational study and analysis results can be generalized however causality cannot be inferred. 
+
+According to BRFSS site "the survey uses a weighting methodology known as iterative proportional fitting or raking in order to address some problems encountered with surveys, especially the non-response bias. This weighting methodology reduces the potential for bias and increases the representativeness of estimates. In addition, raking allows for the incorporation of a now-crucial variable-telephone ownership (landline and/or cellular telephone)-into the BRFSS weighting methodology."
+
+
+* * *
+
+## Part 2: Research questions
+
+**Research quesion 1:** *Examine the relationship between education level and general health in general  population and male/female population*
+
+Increase in health care costs have raised concern about practical and cost effcient solutions to improve health in population and create tailored solutions. One possible way is to look at the association between education and general health
+
+Keywords: education, general health, gender
+
+
+
+**Research quesion 2:** *Explore the relationship between income level and tobacco use*
+
+This study aims at looking for a possible relationship between income and tobacco use a known health risk factor. We are exploring if income level could make a positive impact in preventing/minimising tobacco use
+
+Keywords: income, tobacco use
+
+
+**Research quesion 3:** : *Investigate the relationship between veteran male/female population with respect of diabetes disease*
+
+This study intention is to look at the relationship between male/female veterans and diabetes a known health risk factor to better understand the frequency of diabetes among either the male or female population
+
+Keywords: veteran, diabetes, gender
+
+
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+
+**Research quesion 1:** *Examine the relationship between education level and general health in general  population and male/female population*
+
+Create a new subset dataset for research question and remove missing data.
+
+
+Q1 Variables:
+Education: X_educag
+General Health condition: X_rfhlth
+Gender: sex
+
+
+```{r}
+Q1 <- na.omit( select(brfss2013,X_educag,X_rfhlth,sex)) # create Q1 dataset and remove NA
+str(Q1) #display Q1 structure
+```
+All 3 variables are nominal-categorical data coded as factors in R dataset. Run frequencies, proportions and percentages
+
+
+```{r}
+summary(Q1) #display Q1 summary statistics
+
+```
+
+Simplify the dataset with less levels within variables categories 
+```{r }
+Q1 <-mutate(Q1,education=
+ifelse(X_educag =="Did not graduate high school","No HS",
+ifelse(X_educag =="Graduated high school","HS",
+ifelse(X_educag =="Attended college or technical school","College",
+ifelse(X_educag =="Graduated from college or technical school","College","NA"))))) # create new variable
+```
+
+
+```{r}
+Q1 <-mutate(Q1,health=
+ifelse(X_rfhlth =="Fair or Poor Health","Poor Health",
+ifelse(X_rfhlth =="Good or Better Health","Good Health","NA"))) # create new variable
+```
+
+Drop unused old variables and convert chr to factor 
+```{r}
+Q1$X_educag <- Q1$X_rfhlth <- NULL # drop variables
+Q1 <- as.data.frame(unclass(Q1)) # convert to factor
+```
+
+Check dataset variable values and change variable order (for better print)
+
+```{r}
+Q1 <- Q1[,c(2,3,1)] # rearange variables order
+summary(Q1) # produce summary statistics
+```
+
+
+Dataset looks ok, no missing data. Next we create frequencies and crosstabulation.
+Note: For code effciency and redability we use gmodels package that add percenatages, proportions, and totals in one move.
+
+Create dataset subset with education and general health variables using CrossTable function from gmodels package. We keep it simple within the scope of this project (without Chi-Square test of independence) 
+
+```{r}
+R1_all <- table(Q1$education,Q1$health) #build contingency table
+CrossTable(R1_all,digits = 2,expected = FALSE,prop.chisq = FALSE,chisq = FALSE,fisher = FALSE,mcnemar = FALSE,resid = FALSE,sresid = FALSE,asresid = FALSE, dnn= c("Education","Health")) # display cross-tabulation stats
+
+mosaicplot(R1_all, shade = FALSE,xlab = "Education", ylab = "Health", main="Health condtional on education")  #build mosaic plot
+
+```
+
+
+The contingency table above shows frequency counts, relative frequencies (row, column, table) of health and education variables.
+From the contingency table we notice there were almost 500k responders. The majority of people surveyed have college education and good health.  
+From the mosaic plot, we see that the percentage of people in good health steadily increases with education. For example, the percentage of people in good health went from 55% for people with no high school, to 76% for people with high school, to 87% for people with college education. This indicates health status is associated with education level.
+
+
+Create dataset subset containing male only observations (R1_male)
+```{r}
+Q1_male <- subset(Q1, sex=="Male", select = c(education,health)) #build subset dataset
+R1_male <-table(Q1_male$education,Q1_male$health)  #build contingency table
+#CrossTable(R1_male,digits = 2,expected = FALSE,prop.chisq = FALSE,chisq = FALSE,fisher = FALSE,mcnemar = FALSE,resid = FALSE,sresid = FALSE,asresid = FALSE, dnn= c("Education","Health"))
+
+
+mosaicplot(R1_male, shade = FALSE,xlab = "Education", ylab = "Health", main="Health condtional on education(male population)") #build mosaic plot
+
+```
+
+
+
+```{r}
+Q1_female <- subset(Q1, sex=="Female", select = c(education,health))  #build subset dataset
+R1_female <-table(Q1_female$education,Q1_female$health) #build contingency table
+mosaicplot(R1_female, shade = FALSE,xlab = "Education", ylab = "Health", main="Health condtional on education(female population)")
+```
+
+From the two mosaic plots (male and female) we observe the same trending as for the general population. This suggests there is no difference between male and female relationship between health and education. 
+
+**Research quesion 2:** *Explore the relationship between income level and tobacco use*
+
+Q2:
+Tobacco Use: smokday2, usenow3
+Income: X_incomg
+
+Create a new subset dataset for research question and remove missing data, create new variable (usebtabacco) drop old tabacco variables.
+
+```{r}
+Q2 <- na.omit( select(brfss2013,X_incomg,smokday2,usenow3)) #create Q2 dataset and remove NA
+Q2 <- mutate(Q2, usetobacco = ifelse(smokday2 == "Every day" | smokday2 == "Some days" | usenow3 == "Every day" | usenow3 == "Some days", "Use tobacco", "Do not use tobacco")) # create new variable
+Q2 <-as.data.frame(unclass(Q2))   # convert to factor
+Q2$smokday2 <- Q2$usenow3 <- NULL # drop variables
+str(Q2)   #display data frame structure
+```
+
+
+All 2 variables are nominal-categorical data coded as factors in R dataset. Run frequencies, proportions and percentages
+
+
+```{r}
+summary(Q2) # produce summary statistics
+```
+
+
+
+
+Dataset looks ok, no missing data. Next we create frequencies and crosstabulation. Note: For code effciency and redability we use gmodels package that add percenatages, proportions, and totals in one move.
+
+Create dataset subset with education and general health variables using CrossTable function from gmodels package. We keep it simple within the scope of this project (without Chi-Square test of independence)
+
+
+```{r}
+
+
+R2_all <- table(Q2$X_incomg,Q2$usetobacco)  #build contingency table
+CrossTable(R2_all,digits = 2,expected = FALSE,prop.chisq = FALSE,chisq = FALSE,fisher = FALSE,mcnemar = FALSE,resid = FALSE,sresid = FALSE,asresid = FALSE, dnn= c("Income","Tobacco use")) #build cross-tabulation stats
+```
+
+
+```{r}
+mosaicplot(R2_all, cex.axis =0.6,las = 2, shade = FALSE,xlab = "Income", ylab = "Tobacco Use", main="Tobacco use condtional on income")
+```
+
+The contingency table above shows frequency counts, relative frequencies (row, column, table) of health and education variables. 
+
+From the contingency table we notice there are five levels for income and almost 200k responders. 
+From the mosaic plot, we see that the percentage of people using tobacco steadily decreases with income. For example, the percentage of people with income of $50k or more reported that 28% use tobacco products, while at the other income end of less than $15k, 55% of people use tobacco. This suggest an association between tobacco use and income. 
+
+
+
+
+
+
+**Research quesion 3:** *Investigate the relationship between veteran male/female population with respect of diabetes disease*
+
+Q3:
+Veteran: veteran3
+Gender: sex
+Diabetes: diabete3
+
+
+
+Create a new subset dataset for research question and remove missing data.
+
+```{r}
+Q3 <- na.omit( select(brfss2013,veteran3,diabete3,sex)) #create Q3 dataset and remove NA
+str(Q3)   #display data frame structure
+
+```
+All 3 variables are nominal-categorical data coded as factors in R dataset. Run frequencies, proportions and percentages
+
+```{r}
+summary(Q3) # produce summary statistics
+```
+
+
+
+Simplify the dataset with less levels within variables categories
+```{r}
+Q3 <-mutate(Q3,diabetes=
+ifelse(diabete3 =="Yes","Yes",
+ifelse(diabete3 =="Yes, but female told only during pregnancy","Yes",
+ifelse(diabete3 =="No","No",
+ifelse(diabete3 =="No, pre-diabetes or borderline diabetes","Yes","NA"))))) # create new variable
+
+```
+
+
+Drop unused old variables and convert chr to factor
+
+```{r}
+Q3 <-as.data.frame(unclass(Q3))   # convert to factor
+Q3$diabete3 <- NULL # drop variables
+
+```
+Check dataset variable values
+```{r}
+Q3 <- Q3[,c(1,3,2)] # rearange variables order
+summary(Q3)
+```
+
+
+
+Dataset looks ok, no missing data. Next we create frequencies and crosstabulation. Note: For code effciency and redability we use gmodels package that add percenatages, proportions, and totals in one move.
+
+Create dataset subset  using CrossTable function from gmodels package. We keep it simple within the scope of this project (without Chi-Square test of independence)
+
+
+
+```{r}
+R3_all <- table(Q3$veteran3,Q3$diabetes)  #build contingency table
+CrossTable(R3_all,digits = 2,expected = FALSE,prop.chisq = FALSE,chisq = FALSE,fisher = FALSE,mcnemar = FALSE,resid = FALSE,sresid = FALSE,asresid = FALSE, dnn= c("Veteran Status","Diabetes Status")) # build cross-tabulation stats
+```
+```{r}
+mosaicplot(R3_all, shade = FALSE,xlab = "Veteran Status", ylab = "Diabetes Status", main="Diabetes condtional on veteran status")  #build mosaic plot
+```
+
+The contingency table above shows frequency counts, relative frequencies (row, column, table) of health and education variables.
+
+From the contingency table we notice there were almost 500k responders. The majority of people surveyed have reported non veteran status (87%) and not suffering from diabetes.  
+
+From the mosaic plot, we see there is a higher relative incidence of diabetes in veterans. For example, the percentage of veterans with diabetes is 21% but 15% for general population. However we do not know if the +7% delta for diabetes in veteran segment is due to randomness. Further analysis may be required.
+
+
+Next we will look at diabetes incidence for male and female veterans to observe if there may be a difference
+
+```{r}
+Q3_vet <- subset(Q3, veteran3=="Yes", select = c(diabetes,sex)) #build subset dataset
+R3_vet <-table(Q3_vet$diabetes,Q3_vet$sex)  #build contingency table
+CrossTable(R3_vet,digits = 2,expected = FALSE,prop.chisq = FALSE,chisq = FALSE,fisher = FALSE,mcnemar = FALSE,resid = FALSE,sresid = FALSE,asresid = FALSE, dnn= c("Diabetes status","Veteran Gender"))
+```
+
+
+
+```{r}
+mosaicplot(R3_vet, shade = FALSE, xlab = "Diabetes Status", ylab = "Veteran gender", main="Diabetes condtional on veteran gender")  #build mosaic plot
+```
+
+
+From the contingency table we notice the majority of veterans are male (91%).  
+
+From the mosaic plot, we see there is a higher relative incidence of diabetes in veteran males than veteran females. For example, the percentage of veteran males with diabetes is 21% but 14% for veteran females. However we do not know if the +7% delta for diabetes in veteran male segment is due to randomness and being overrepresented in the veteran segment. Further analysis may be required.
+
+
+
+**This concludes Project 1 assignment. Thank you for your time.**
